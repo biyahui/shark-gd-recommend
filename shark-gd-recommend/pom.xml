@@ -1,0 +1,234 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.askingdata</groupId>
+	<artifactId>shark-gd-recommend</artifactId>
+	<version>0.0.1</version>
+	<packaging>jar</packaging>
+
+	<name>shark-gd-recommend</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<spark.version>2.0.0</spark.version>
+		<scala.version>2.11</scala.version>
+	</properties>
+	<distributionManagement>
+		<repository>
+			<id>central</id>
+			<name>libs-release</name>
+			<url>http://192.168.1.108:9091/artifactory/libs-release</url>
+		</repository>
+	</distributionManagement>
+	<!-- <repositories> -->
+
+	<dependencies>
+		<dependency>
+			<groupId>com.typesafe.scala-logging</groupId>
+			<artifactId>scala-logging-slf4j_2.11</artifactId>
+			<version>2.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>graphframes</groupId>
+			<artifactId>graphframes</artifactId>
+			<version>0.3.0-spark2.0-s_2.11</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-core_${scala.version}</artifactId>
+			<version>${spark.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-sql_${scala.version}</artifactId>
+			<version>${spark.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-hive_${scala.version}</artifactId>
+			<version>${spark.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-mllib_${scala.version}</artifactId>
+			<version>${spark.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.askingdata</groupId>
+			<artifactId>shark-common</artifactId>
+			<version>0.5</version>
+			<exclusions>
+				<exclusion>
+					<groupId>ch.qos.logback</groupId>
+					<artifactId>logback-classic</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.askingdata</groupId>
+			<artifactId>common</artifactId>
+			<version>0.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-hdfs</artifactId>
+			<version>2.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-common</artifactId>
+			<version>2.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<!--<dependency> -->
+		<!--<groupId>edu.stanford.nlp</groupId> -->
+		<!--<artifactId>stanford-corenlp</artifactId> -->
+		<!--<version>3.6.0</version> -->
+		<!--</dependency> -->
+		<!--<dependency> -->
+		<!--<groupId>edu.stanford.nlp</groupId> -->
+		<!--<artifactId>stanford-corenlp</artifactId> -->
+		<!--<version>3.6.0</version> -->
+		<!--<classifier>models</classifier> -->
+		<!--</dependency> -->
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	<profiles>
+		<profile>
+			<id>package</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-shade-plugin</artifactId>
+						<version>2.4.3</version>
+						<configuration>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/*.SF</exclude>
+										<exclude>META-INF/*.DSA</exclude>
+										<exclude>META-INF/*.RSA</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
+						<executions>
+							<execution>
+								<id>job-driver-jar</id>
+								<phase>package</phase>
+								<goals>
+									<goal>shade</goal>
+								</goals>
+								<configuration>
+									<shadedArtifactAttached>true</shadedArtifactAttached>
+									<shadedClassifierName>driver</shadedClassifierName>
+									<artifactSet>
+										<excludes>
+											<exclude>org.apache.spark:*</exclude>
+											<exclude>edu.stanford.nlp:stanford-corenlp</exclude>
+											<exclude>org.apache.hadoop:*</exclude>
+											<exclude>org.apache.hive:*</exclude>
+											<exclude>org.mongodb:mongo-java-driver</exclude>
+											<exclude>org.apache.lucene:lucene-core</exclude>
+											<exclude>org.scala-lang:*</exclude>
+											<exclude>org.slf4j:*</exclude>
+											<exclude>org.eclipse.tycho:org.eclipse.jdt.core</exclude>
+											<exclude>commons-beanutils:commons-beanutils</exclude>
+											<exclude>org.springframework.boot:*</exclude>
+											<exclude>org.springframework.data:*</exclude>
+											<exclude>org.springframework.mobile:*</exclude>
+											<exclude>org.springframework:*</exclude>
+											<exclude>javax.servlet:servlet-api</exclude>
+											<exclude>org.apache.tomcat.embed:*</exclude>
+											<exclude>ch.qos.logback:*</exclude>
+										</excludes>
+									</artifactSet>
+									<transformers>
+										<transformer
+											implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+										<transformer
+											implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+											<mainClass>com.askingdata.gd.model.MainProcessor</mainClass>
+										</transformer>
+									</transformers>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>deploy</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>2.2.1</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.10.4</version>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>javadoc-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<!-- explicitly define maven-deploy-plugin after other to force exec 
+							order -->
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-deploy-plugin</artifactId>
+						<version>2.8.2</version>
+						<executions>
+							<execution>
+								<id>deploy</id>
+								<phase>deploy</phase>
+								<goals>
+									<goal>deploy</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>
