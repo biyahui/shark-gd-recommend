@@ -1,5 +1,6 @@
 package com.askingdata.gd.model.wish.recommend.cluster;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -26,16 +27,12 @@ import scala.collection.JavaConversions;
  * @author qian qian
  * @since 2017年4月6日
  */
-public class LoadTagVector extends CommonExecutor implements RecommendConstant {
+public class LoadTagVector implements Serializable{
 	
-	private static final long serialVersionUID = 7807471950834876219L;
+	private static final long serialVersionUID = 4576032269978783146L;
 
-	@Override
-	public boolean execute(MongoClient mc) {
+	public boolean execute(Dataset<Row> originalTags ) {
 		// TODO Auto-generated method stub
-		String all_tag_sql = "select custom_tags from %s";
-		String _all_tag_sql = String.format(all_tag_sql, WISH_PRODUCT_STATIC);
-		Dataset<Row> originalTags = spark.sql(_all_tag_sql);
 		
 		JavaRDD<Document> tagFrequencyRDD = originalTags.javaRDD().mapPartitions(new FlatMapFunction<Iterator<Row>,String>(){
 
@@ -106,16 +103,9 @@ public class LoadTagVector extends CommonExecutor implements RecommendConstant {
 			
 		});
 		
-		Dataset<Row> data = SparkUtil.toDF(tagFrequencyRDD, spark);
-//		data.createOrReplaceTempView(INT_TAG_ALL);
-		data.write().mode(SaveMode.Overwrite).saveAsTable(INT_TAG_ALL);
 		return true;
 	}
 
-	@Override
-	public int getPriority() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+
 
 }

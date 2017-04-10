@@ -12,7 +12,8 @@ public interface RecommendConstant {
 	String TYPE_POTENTIAL = "potential";
 	
 	// 中间表
-	String INT_TAG_ALL = "tag_all";
+	String INT_TAG_BASE = "tag_base";// 与用户关注相关的标签集合表
+	String INT_FOCUS = "focus_int";
 	String INT_USER_GOODS_FOCUS = "user_goods_focus";
 	String INT_USER_SHOP_HOTGOODS_FOCUS = "user_shop_hotgoods_focus";
 	String INT_USER_TAGS_FOCUS = "user_tags_focus";

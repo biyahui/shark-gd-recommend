@@ -8,15 +8,15 @@ public class CreateGoodsVector extends CommonExecutor implements RecommendConsta
 	private static final long serialVersionUID = -4529819264910006290L;
 
 	@Override
-	public boolean execute(MongoClient mc) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
 	public int getPriority() {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public boolean execute(MongoClient mc) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

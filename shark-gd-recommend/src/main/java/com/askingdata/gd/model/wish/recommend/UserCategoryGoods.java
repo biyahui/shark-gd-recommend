@@ -4,6 +4,7 @@ import com.askingdata.gd.model.wish.common.CommonExecutor;
 import com.mongodb.MongoClient;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 
 /**
  * 通过用户关注的类目得到待推荐商品
@@ -23,8 +24,8 @@ public class UserCategoryGoods extends CommonExecutor implements IRecommend{
 		String _q = String.format(q, TB_FOCUS, FOCUS_TYPE_CATEGORY);
 		Dataset<Row> tmp = spark.sql(_q);
 		
-		tmp.createOrReplaceTempView(TB_USER_CATEGORY_GOODS);
-//		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_USER_CATEGORY_GOODS); // debug
+//		tmp.createOrReplaceTempView(TB_USER_CATEGORY_GOODS);
+		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_USER_CATEGORY_GOODS); // debug
 		return true;
 	}
 

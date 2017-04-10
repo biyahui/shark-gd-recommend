@@ -10,6 +10,8 @@ public class CreateGoodsCategory extends CommonExecutor implements RecommendCons
 	@Override
 	public boolean execute(MongoClient mc) {
 		// TODO Auto-generated method stub
+		
+		
 		return false;
 	}
 

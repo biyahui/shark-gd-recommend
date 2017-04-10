@@ -30,8 +30,8 @@ public class UserGoods extends CommonExecutor implements IRecommend {
 		logger.warn(_q);
 		Dataset<Row> tmp = spark.sql(_q);
 		
-		tmp.createOrReplaceTempView(TB_USER_GOODS);
-	//	tmp.write().mode(SaveMode.Overwrite).saveAsTable("guo_"+TB_USER_GOODS); // debug
+//		tmp.createOrReplaceTempView(TB_USER_GOODS);
+		tmp.write().mode(SaveMode.Overwrite).saveAsTable("guo_"+TB_USER_GOODS); // debug
 		return true;
 	}
 

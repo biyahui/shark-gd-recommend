@@ -5,6 +5,7 @@ import com.askingdata.gd.model.wish.common.HivePartitionUtil;
 import com.mongodb.MongoClient;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 
 /**
  * 每个商品最近7天销量(不为null)和未来7天销量（可能为null）
@@ -46,8 +47,8 @@ public class GoodsSale extends CommonExecutor implements IRecommend {
 		logger.warn(_q2);
 
 		Dataset<Row> tmp = spark.sql(_q2);
-		tmp.createOrReplaceTempView(TB_GOODS_SALE);
-//		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_GOODS_SALE); // debug
+//		tmp.createOrReplaceTempView(TB_GOODS_SALE);
+		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_GOODS_SALE); // debug
 		return true;
 	}
 

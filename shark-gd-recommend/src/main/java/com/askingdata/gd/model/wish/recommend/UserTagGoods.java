@@ -5,6 +5,7 @@ import com.askingdata.gd.model.wish.common.HivePartitionUtil;
 import com.mongodb.MongoClient;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
 
 /**
  * 通过用户关注的标签得到待推荐商品
@@ -31,8 +32,8 @@ public class UserTagGoods extends CommonExecutor implements IRecommend{
 		logger.warn(_q);
 		Dataset<Row> tmp = spark.sql(_q);
 		
-		tmp.createOrReplaceTempView(TB_USER_TAG_GOODS);
-//		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_USER_TAG_GOODS); // debug
+//		tmp.createOrReplaceTempView(TB_USER_TAG_GOODS);
+		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_USER_TAG_GOODS); // debug
 		return true;
 	}
 
