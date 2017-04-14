@@ -39,7 +39,8 @@ public interface RecommendConstant {
 	String FOCUS_TYPE_CATEGORY = "category";
 	
 	//推荐模型任务优先级
-	int PRI_LoadFocus = 60;
+	int PRI_LoadFocus = 70;
+	int PRI_PotentialHot = 60;
 	int PRI_ShopHotGoods = 50;
 	int PRI_UserTagsVector = 40;
 	int PRI_UserShopVector = 30;
