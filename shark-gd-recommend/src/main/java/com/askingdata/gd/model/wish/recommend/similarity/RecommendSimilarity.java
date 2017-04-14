@@ -1,14 +1,19 @@
 package com.askingdata.gd.model.wish.recommend.similarity;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.TreeSet;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
@@ -18,16 +23,17 @@ import com.askingdata.gd.model.wish.common.CommonExecutor;
 import com.askingdata.gd.model.wish.common.HivePartitionUtil;
 import com.mongodb.MongoClient;
 
+import jline.internal.Log;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 
 /**
-*
+* 计算用户与商品相似度
 * @author biyahui
 * @since 2017年4月12日
 */
 public class RecommendSimilarity extends CommonExecutor implements RecommendConstant{
-
+	
 	private static final long serialVersionUID = 5473421056618951843L;
 
 	@Override
@@ -44,7 +50,7 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		//按用户id收集对应的标签，形成标签列表
 		Dataset<Row> user_tags = d.groupBy("user_id").agg(functions.collect_list("tag")).toDF("user_id","tags");
 		//对用户直接或间接关注的标签进行词频统计
-		JavaPairRDD<String,HashMap<String,Integer>> result = user_tags.javaRDD()
+		JavaPairRDD<String,HashMap<String,Integer>> user_tag_frequency = user_tags.javaRDD()
 				.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Row>, String, HashMap<String,Integer>>() {
 			private static final long serialVersionUID = 701129875005852925L;
 
@@ -69,28 +75,90 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 				return pairList.iterator();
 			}
 		});
-		List<Tuple2<String,HashMap<String,Integer>>> list = result.take(20);
-		for(Tuple2<String,HashMap<String,Integer>> t:list){
-			System.out.println("user id:"+t._1);
-			HashMap<String,Integer> map = (HashMap) t._2;
-			for(String tmp : map.keySet()){
-				System.out.print(tmp+"@"+map.get(tmp)+"\t");
-			}
-			System.out.println();
-		} 
 		//构造商品和其对应的标签
-		String goods_sql = "select goods_id,tags from % where pt='%s'";
+		String goods_sql = "select goods_id,tags from %s where pt='%s'";
 		String _goods_sql = String.format(goods_sql, WISH_PRODUCT_DYNAMIC, toPt);
 		Dataset<Row> goods_tag = spark.sql(_goods_sql);
-		
-//		result.mapToPair(new PairFunction<Tuple2<String,HashMap<String,Integer>>, String, List<String>>() {
-//			private static final long serialVersionUID = 7303762704244353091L;
-//
-//			@Override
-//			public Tuple2<String, List<String>> call(Tuple2<String, HashMap<String, Integer>> t) throws Exception {
-//				return null;
+		//goods_tag.createOrReplaceTempView("goods_tag");
+		goods_tag.limit(5).show();
+		logger.info("begin calcute similarity.");
+		//计算用户和商品的相似性,返回用户和为其推荐的商品
+		JavaPairRDD<String, List<GoodsSimilarity>> recommend = user_tag_frequency
+				.mapValues(new Function<HashMap<String,Integer>, List<GoodsSimilarity>>() {
+			
+			private static final long serialVersionUID = -7845282831632334622L;
+			
+			@Override
+			public List<GoodsSimilarity> call(HashMap<String, Integer> v1) throws Exception {
+				//维护一个大小为recommendCount的TreeSet，用于存放与用户相似度最高的商品
+				TreeSet<GoodsSimilarity> ts = new TreeSet<GoodsSimilarity>(new Comparator<GoodsSimilarity>() {
+					
+					@Override
+					public int compare(GoodsSimilarity o1, GoodsSimilarity o2) {
+						if(o1.getSim()-o2.getSim() == 0){
+							return 0;
+						}else if(o1.getSim()-o2.getSim() >0){
+							return 1;
+						}else{
+							return -1;
+						}
+					}
+				});
+				goods_tag.javaRDD().foreach(new VoidFunction<Row>() {
+					
+					private static final long serialVersionUID = 5200368832159404150L;
+					
+					@Override
+					public void call(Row t) throws Exception {
+						String goods_id = t.getAs("goods_id");
+						List<String> tags = JavaConversions.seqAsJavaList(t.getAs("tags"));
+						//计算一个用户的所有标签和一个商品的相似度
+						for(String tmp : v1.keySet()){
+							double sim = 0;
+							int user_sum = 0;
+							int good_sum = 0;
+							int vector_sum = 0;
+							if(tags.contains(tmp)){
+								user_sum += v1.get(tmp)*v1.get(tmp);
+								vector_sum += v1.get(tmp);
+								good_sum += 1;
+							}
+							//一个用户所有标签与一个商品的相似度
+							sim = vector_sum/(user_sum*good_sum);
+							GoodsSimilarity gm = new GoodsSimilarity();
+							gm.setGoodId(goods_id);
+							gm.setSim(sim);
+							if(ts.size() < recommendCount){
+								ts.add(gm);
+							}else{
+								ts.pollFirst();
+								ts.add(gm);
+							}
+						}
+					}
+				});
+				List<GoodsSimilarity> res = new ArrayList<GoodsSimilarity>();
+				res.addAll(ts);
+				return res;
+				//return null;
+			}
+		});
+		List<Tuple2<String,List<GoodsSimilarity>>> list = recommend.take(5);
+		for(Tuple2<String,List<GoodsSimilarity>> t:list){
+			System.out.println("user id:"+t._1);
+			for(GoodsSimilarity tmp : t._2){
+				System.out.println(tmp.getGoodId()+":"+tmp.getSim());
+			}
+		} 
+//		List<Tuple2<String,HashMap<String,Integer>>> list = result.take(20);
+//		for(Tuple2<String,HashMap<String,Integer>> t:list){
+//			System.out.println("user id:"+t._1);
+//			HashMap<String,Integer> map = (HashMap) t._2;
+//			for(String tmp : map.keySet()){
+//				System.out.print(tmp+"@"+map.get(tmp)+"\t");
 //			}
-//		});
+//			System.out.println();
+//		} 
 		return true;
 	}
 

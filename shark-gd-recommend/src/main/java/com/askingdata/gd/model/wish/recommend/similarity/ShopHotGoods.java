@@ -38,11 +38,11 @@ public class ShopHotGoods extends CommonExecutor implements RecommendConstant{
 		 
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
-		//店铺与对应的热销商品的标签  shop_id tags amount,按照shop_id分组，amount由高到底排序取top N，对标签去重
+		
 		String q1 = "select x.shop_id, explode(y.tags) as tag from %s x\n"+
 				"left join (select goods_id,tags from %s where pt='%s' and amount!='NaN' and amount!=0) y on(x.goods_id=y.goods_id)";
 		String _q1 = String.format(q1, WISH_PRODUCT_STATIC, WISH_PRODUCT_DYNAMIC, toPt);
-		//热销商品查询
+		//店铺与对应的热销商品的标签  shop_id tags amount,按照shop_id分组，amount由高到底排序取top N，对标签去重
 //		String q = "select x.shop_id, y.tags tags, amount from %s x\n"+
 //				"left join (select goods_id, amount from %s where pt='%s' and amount!='NaN') y\n"+
 //				"on(x.goods_id = y.goods_id)";
