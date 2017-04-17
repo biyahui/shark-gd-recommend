@@ -1,3 +1,4 @@
+
 package com.askingdata.gd.model;
 
 import org.apache.log4j.Logger;
@@ -20,3 +21,4 @@ public class MainProcessor {
 		driver.close();
 	}
 }
+

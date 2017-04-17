@@ -10,6 +10,7 @@ import com.askingdata.gd.model.wish.common.HivePartitionUtil;
 import com.mongodb.MongoClient;
 
 /**
+* 构建用户与其关注的商品标签的向量
 *
 * @author biyahui
 * @since 2017年4月13日

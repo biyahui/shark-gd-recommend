@@ -19,6 +19,8 @@ public interface RecommendConstant {
 	String INT_USER_GOODS_CATEGORY_FOCUS = "user_goods_category_focus";
 	String Shop_Hot_Tags = "shop_hot_tag";
 	String User_Shop_Tags = "user_shop_tags";
+	String TB_FINAL_TABLE = "recommend_sim";
+	String TB_RECOMMEND_ALL = "recommend_all";
 
 	// Mongo集合
 	String COL_FOCUS = "focus";

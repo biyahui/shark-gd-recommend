@@ -63,6 +63,7 @@ public class LoadFocus extends CommonExecutor implements RecommendConstant{
 
 		
 		focusDF.createOrReplaceTempView(INT_FOCUS);
+		
 //		focusDF.write().mode(SaveMode.Overwrite).saveAsTable(TB_FOCUS); // debug
 		return true;
 	}

@@ -48,6 +48,7 @@ public class GoodsSale extends CommonExecutor implements IRecommend {
 		Dataset<Row> tmp = spark.sql(_q2);
 		tmp.createOrReplaceTempView(TB_GOODS_SALE);
 //		tmp.write().mode(SaveMode.Overwrite).saveAsTable(TB_GOODS_SALE); // debug
+		
 		return true;
 	}
 
