@@ -1,12 +1,16 @@
 package com.askingdata.gd.model.wish.recommend.similarity.category;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 public class CategoryTree {
 	
-	private LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
+	//private LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
+	private static LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
+	//构建一个商品id和商品类目id的对应关系
+	private static HashMap<String,String> goods_category = new HashMap<String,String>();
 	private boolean hasAdded = false;
 	
 	/**

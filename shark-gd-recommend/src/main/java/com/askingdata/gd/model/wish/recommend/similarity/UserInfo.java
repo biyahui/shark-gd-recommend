@@ -1,6 +1,7 @@
 package com.askingdata.gd.model.wish.recommend.similarity;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
 *
@@ -9,17 +10,34 @@ import java.util.HashMap;
 */
 public class UserInfo {
 	private String userId;
-	private HashMap<String,Integer> map;
+	private List goodsId;
+	private HashMap<String, Integer> tags;
+	private int distance;
+	//private HashMap<String, Integer> map;
 	public String getUserId() {
 		return userId;
 	}
 	public void setUserId(String userId) {
 		this.userId = userId;
 	}
-	public HashMap<String, Integer> getMap() {
-		return map;
+	public List getGoodsId() {
+		return goodsId;
 	}
-	public void setMap(HashMap<String, Integer> map) {
-		this.map = map;
+	public void setGoodsId(List goodsId) {
+		this.goodsId = goodsId;
 	}
+
+	public int getDistance() {
+		return distance;
+	}
+	public void setDistance(int distance) {
+		this.distance = distance;
+	}
+	public HashMap<String, Integer> getTags() {
+		return tags;
+	}
+	public void setTags(HashMap<String, Integer> tags) {
+		this.tags = tags;
+	}
+	
 }

@@ -10,6 +10,7 @@ import java.util.List;
 public class GoodsInfo {
 	private String goodsId;
 	private List<String> tags;
+	private int dist;
 	public String getGoodsId() {
 		return goodsId;
 	}
@@ -21,6 +22,12 @@ public class GoodsInfo {
 	}
 	public void setTags(List<String> tags) {
 		this.tags = tags;
+	}
+	public int getDist() {
+		return dist;
+	}
+	public void setDist(int dist) {
+		this.dist = dist;
 	}
 	
 }

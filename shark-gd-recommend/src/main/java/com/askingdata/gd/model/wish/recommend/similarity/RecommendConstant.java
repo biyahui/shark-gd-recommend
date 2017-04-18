@@ -21,10 +21,13 @@ public interface RecommendConstant {
 	String User_Shop_Tags = "user_shop_tags";
 	String TB_FINAL_TABLE = "recommend_sim";
 	String TB_RECOMMEND_ALL = "recommend_all";
+	String COL_GOODSID_CATEGORY_HOT = "goodsId_category_hot";
+	String TB_USER_TAG_GOODS = "user_tag_goods";
 
 	// Mongo集合
 	String COL_FOCUS = "focus";
 	String COL_POTENTIAL_HOT = "potentialHot";
+	String COL_GOODSID_CATEGORY = "goodsId_category";
 
 	// Hive数据表
 	String WISH_PRODUCT_DYNAMIC = "wish_product_dynamic";

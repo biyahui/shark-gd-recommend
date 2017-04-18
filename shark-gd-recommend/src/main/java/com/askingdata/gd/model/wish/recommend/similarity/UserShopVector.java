@@ -22,7 +22,7 @@ public class UserShopVector extends CommonExecutor implements RecommendConstant{
 	private static final long serialVersionUID = 7576434124955392383L;
 	@Override
 	public boolean execute(MongoClient mc) {
-		String q = "select x.user_id, y.tag from %s x left join \n"+
+		String q = "select x.user_id, goods_id, y.tag from %s x left join \n"+
 				"(select shop_id,tag from %s) y on(x.value=y.shop_id)\n"+
 				"where type='%s'";
 		String _q = String.format(q, INT_FOCUS, Shop_Hot_Tags, FOCUS_TYPE_SHOP);
