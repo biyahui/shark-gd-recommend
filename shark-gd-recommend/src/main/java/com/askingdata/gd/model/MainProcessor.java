@@ -1,3 +1,4 @@
+
 package com.askingdata.gd.model;
 
 import org.apache.log4j.Logger;
@@ -15,8 +16,9 @@ public class MainProcessor {
 		MongoSparkDriver driver = new MongoSparkDriver();
 		driver.setLogger(logger);
 		driver.enableHiveSupport();
-		driver.addExecutorClassScanPath("com.askingdata.gd.model.wish");
+		driver.addExecutorClassScanPath("com.askingdata.gd.model.wish.recommend.similarity");
 		driver.go(args);
 		driver.close();
 	}
 }
+

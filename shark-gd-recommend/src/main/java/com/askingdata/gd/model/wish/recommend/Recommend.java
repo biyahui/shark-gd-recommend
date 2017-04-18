@@ -144,9 +144,9 @@ public class Recommend extends CommonExecutor implements IRecommend {
 		.createOrReplaceTempView(TB_RECOMMEND_ALL);
 		////////////////////////////
 		// 保存推荐结果
-		String q4 = "INSERT OVERWRITE TABLE %s PARTITION(pt='%s')\n" +
+		String q4 = "INSERT OVERWRITE TABLE %s \n" +
 				"select user_id, type, values from %s";
-		String _q4 = String.format(q4, TB_FINAL_TABLE, toPt, TB_RECOMMEND_ALL);
+		String _q4 = String.format(q4, TB_FINAL_TABLE, TB_RECOMMEND_ALL);
 		spark.sql(_q4);
 		
 		updateBaseData(mc, TB_FINAL_TABLE, toPt);
