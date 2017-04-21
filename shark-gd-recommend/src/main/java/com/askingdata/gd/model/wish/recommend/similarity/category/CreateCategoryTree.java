@@ -8,7 +8,7 @@ import org.apache.spark.api.java.function.Function;
 import org.bson.Document;
 
 import com.askingdata.gd.model.wish.common.CommonExecutor;
-import com.askingdata.gd.model.wish.recommend.cluster.RecommendConstant;
+import com.askingdata.gd.model.wish.recommend.similarity.RecommendConstant;
 import com.askingdata.shark.common.Connections;
 import com.mongodb.MongoClient;
 
@@ -50,7 +50,8 @@ public class CreateCategoryTree extends CommonExecutor implements RecommendConst
 		
 		CategoryTree ct = new CategoryTree();
 		ct.createCategoryTree(new ArrayList<TreeNode>(nodes));
-		ct.printMultiTree();
+		//biyahui noted
+		//ct.printMultiTree();
 		
 		return true;
 	}
@@ -58,7 +59,7 @@ public class CreateCategoryTree extends CommonExecutor implements RecommendConst
 	@Override
 	public int getPriority() {
 		// TODO Auto-generated method stub
-		return 0;
+		return PRI_CatagoryTree;
 	}
 
 }
