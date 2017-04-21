@@ -87,6 +87,21 @@
 			<version>2.6.4</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.askingdata</groupId>
+			<artifactId>lang-word</artifactId>
+			<version>0.0.10</version>
+			<exclusions>
+				<exclusion>
+					<groupId>ch.qos.logback</groupId>
+					<artifactId>logback-classic</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.askingdata</groupId>
+					<artifactId>common</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 		<!--<dependency> -->
 		<!--<groupId>edu.stanford.nlp</groupId> -->
 		<!--<artifactId>stanford-corenlp</artifactId> -->
