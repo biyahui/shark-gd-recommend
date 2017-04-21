@@ -17,13 +17,15 @@ public class TagStemDemo extends CommonExecutor implements IRecommend {
 	public boolean execute(MongoClient mc) {
 		// TODO 用lang-word封装的词干抽取方法处理原始的商品标签列表
 		try{
-			Dataset<Row> goodsTagSet = spark.sql("select goods_id, custom_tags from wish_product_static where goods_id != 'NULL' and length(trim(goods_id)) = 24");
+			Dataset<Row> goodsTagSet = spark.sql("select goods_id, custom_tags as tags from wish_product_static where goods_id != 'NULL' and length(trim(goods_id)) = 24");
 			StanfordCoreNLPWordSplitter wordSplitter = new StanfordCoreNLPWordSplitter();
 			wordSplitter.setJavaSparkContext(jsc)
 			.setSparkSession(spark)
+			.setSegmentType("ENGLISH")
 			.setEngTokenType("stem")
+			.setKeepSegmentResultTight(false)
 			.setTransformPartitionNum(300);
-			Dataset<Row> stemmedTagSet = wordSplitter.setInputCol("custom_tags").setOutputCol("stem_tag").transform(goodsTagSet);
+			Dataset<Row> stemmedTagSet = wordSplitter.setInputCol("tags").setOutputCol("stem_tags").transform(goodsTagSet);
 			stemmedTagSet.printSchema();
 			stemmedTagSet.write().mode(SaveMode.Overwrite).saveAsTable("tag_stem");
 			return true;
