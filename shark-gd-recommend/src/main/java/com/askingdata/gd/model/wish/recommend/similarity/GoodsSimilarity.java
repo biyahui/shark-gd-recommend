@@ -1,6 +1,6 @@
 package com.askingdata.gd.model.wish.recommend.similarity;
 /**
-* 存放用户id，用户与商品的相似度
+* 存放用户id，商品id，用户与商品的相似度
 * 
 * @author biyahui
 * @since 2017年4月14日
