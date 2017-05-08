@@ -1,7 +1,12 @@
 package com.askingdata.gd.model.wish.recommend.similarity.category;
 
-public class TreeNode {
+import java.io.Serializable;
+import java.util.LinkedList;
+import java.util.List;
 
+public class TreeNode implements Serializable{
+
+	private static final long serialVersionUID = -3668013667214486347L;
 	private String nodeId;
 	/** 父节点Id */
 	private String parentId;
@@ -9,6 +14,8 @@ public class TreeNode {
 	private String nodeText;
 	/** 是否包含子节点 */
 	boolean hasChild;
+	
+	private List<TreeNode> childList;
 
 	/**
 	 * 构造函数
@@ -16,8 +23,9 @@ public class TreeNode {
 	 * @param nodeId
 	 *            节点Id
 	 */
-	public TreeNode(String nodeId) {
+	public TreeNode(String nodeId, List<TreeNode> children) {
 		this.nodeId = nodeId;
+		this.childList = children;
 	}
 
 	/**
@@ -31,6 +39,7 @@ public class TreeNode {
 	public TreeNode(String nodeId, String parentId) {
 		this.nodeId = nodeId;
 		this.parentId = parentId;
+		this.childList = new LinkedList<TreeNode>();
 	}
 
 	public String getNodeId() {
@@ -63,6 +72,14 @@ public class TreeNode {
 	
 	public boolean hasChild() {
 		return this.hasChild;
+	}
+	
+	public List<TreeNode> getChildren(){
+		return this.childList;
+	}
+	
+	public void setChidren(List<TreeNode> children){
+		this.childList = children;
 	}
 	
 	

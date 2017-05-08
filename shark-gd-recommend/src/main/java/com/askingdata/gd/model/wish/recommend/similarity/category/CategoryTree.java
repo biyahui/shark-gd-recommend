@@ -1,17 +1,23 @@
 package com.askingdata.gd.model.wish.recommend.similarity.category;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * 类目多叉树的基础类
+ * 目前功能：构建多叉树，查找标签在多叉树的所有节点，查找标签在多叉树上对应的所有级别以及最小级别
+ * @author qian qian
+ * @since 2017年5月8日
+ */
 public class CategoryTree {
 	
-	//private LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
 	private static LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
-	//构建一个商品id和商品类目id的对应关系
-	private static HashMap<String,String> goods_category = new HashMap<String,String>();
-	private boolean hasAdded = false;
+	public int nodeCount = 0;
+	public int preNodeCount = 0;
 	
 	/**
 	 * 生成类目多叉树
@@ -22,99 +28,142 @@ public class CategoryTree {
 		/**
 		 * 初始化多叉树的根节点，一个根节点代表一个商品类目
 		 */
-//		LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
 		System.out.println("node list size : " + nodes.size());
-		Iterator<TreeNode> treeIterator = nodes.iterator();
-		while(treeIterator.hasNext()) {	
-			TreeNode tnode = treeIterator.next();
+		Map<TreeNode,Boolean> treeNodesMap = new HashMap<TreeNode,Boolean>();
+		for(TreeNode node : nodes){
+			treeNodesMap.put(node, false);
+		}
+		treeNodesMap.forEach((tnode,hasAdded) -> {
 			if(tnode.getParentId().equals("0")) {
 				MultiTreeNode branch = new MultiTreeNode(tnode);
-				treeIterator.remove();
-//				nodes.remove(tnode);
 				branches.add(branch);
+				nodeCount++;
+				treeNodesMap.put(tnode, true);
 			}
-		}
-		System.out.println("node list size : " + nodes.size());
+		});
 		System.out.println("branch list size : " + branches.size());
 		/**
 		 * 遍历集合中的树节点，构造多叉树
 		 */
-		treeIterator = nodes.iterator();
-		System.out.println("node list size : " + nodes.size());
-		while(treeIterator.hasNext()) {
-			TreeNode node = treeIterator.next();
-			for(int i = 0; i < branches.size(); i++) {
-				MultiTreeNode temp = branches.get(i);
-				addMultiTreeNode(temp,node);
-				branches.set(i, temp);
-				
-				if(hasAdded){
-					treeIterator.remove();
-					hasAdded = false;
-					break;
+		treeNodesMap.forEach((node,hasAdded) -> {
+			if(!hasAdded){
+				for(int i = 0; i < branches.size(); i++) {
+					MultiTreeNode temp = branches.get(i);
+					treeNodesMap.put(node, addMultiTreeNode(temp,node));
 				}
 			}
-			
-		}
-		System.out.println("branch list size : " + branches.size());
+		});
 		return branches;
 	}
 	
-	private void addMultiTreeNode(MultiTreeNode branch, TreeNode node){
+	private boolean addMultiTreeNode(MultiTreeNode branch, TreeNode node){
 		TreeNode data = branch.getData();
 		if(data.getNodeId().equals(node.getParentId())){
 			List<MultiTreeNode> childList = branch.getChildList();
 			MultiTreeNode newMultiTree = new MultiTreeNode(node);
 			childList.add(newMultiTree);
 			branch.setChildList(childList);
-			hasAdded = true;
-			return;
+			nodeCount++;
+			return true;
 		}else if(branch.getChildList() != null && branch.getChildList().size() > 0){
+			int count = 0;
 			for(int i = 0; i < branch.getChildList().size(); i++){
-				if(!hasAdded){
-					addMultiTreeNode(branch.getChildList().get(i), node);
-				}else{
-					return;
+				if(addMultiTreeNode(branch.getChildList().get(i), node)){
+					count++;
 				}
 			}
+			if(count > 0){
+				return true;
+			}else{
+				return false;
+			}
+		}else{
+			return false;
 		}
 	}
 	
-	private int dist = -1;
+	/**
+	 * 查找标签id对应的输入多叉树上的所有节点
+	 * @param branches 待查找多叉树
+	 * @param nodeId 输入标签id
+	 * @return 与输入标签吻合的多叉树节点集合
+	 */
+	public List<TreeNode> findTreeNodes(List<MultiTreeNode> branches, String nodeId){
+		List<TreeNode> hitResults = new ArrayList<TreeNode>();
+		for(int i = 0; i < branches.size(); i++){
+			List<TreeNode> hitBranchResult = new ArrayList<TreeNode>();
+			hitBranchResult = hitBranchNodes(nodeId, branches.get(i));
+			hitResults.addAll(hitBranchResult);
+		}
+		return hitResults;
+	}
+	
+	private List<TreeNode> hitBranchNodes(String nodeId, MultiTreeNode multiTreeNode) {
+		// TODO Auto-generated method stub
+		List<TreeNode> results = new ArrayList<TreeNode>();
+		TreeNode node = multiTreeNode.getData();
+		if(nodeId.equals(node.getNodeId())){
+			results.add(node);
+		}else if(multiTreeNode.getChildList() != null && multiTreeNode.getChildList().size() > 0){
+			for(int i = 0; i < multiTreeNode.getChildList().size(); i++){
+				results.addAll(hitBranchNodes(nodeId,multiTreeNode.getChildList().get(i)));
+			}
+		}
+		return results;
+	}
+
 	
 	/**
-	 * 查找输入标签id是否存在，并返回结果
+	 * 查找输入标签id是否存在，并返回所在分支最短的结果
+	 * @param branches 待查找的多叉树分支
 	 * @param nodeId 输入标签id
-	 * @return 标签所属类目下的级别，没找到就返回-1
+	 * @return 标签所属类目下的最短层级，没找到就返回-1
 	 */
-	public int findTreeNode(String nodeId){
-		if(branches != null && branches.size() > 0){
-			for(int i = 0; i < branches.size(); i++){
-				dist = hitNode(nodeId,branches.get(i),0);
-				if(dist > -1){
-					break;
-				}
-			}
-			return dist;
+	public int findTreeNodeMinLevel(List<MultiTreeNode> branches, String nodeId){
+		List<Integer> dist = new ArrayList<Integer>();
+		
+		for(int i = 0; i < branches.size(); i++){
+			hitNodeLevelList(nodeId,branches.get(i),0,dist);
+		}
+		if(dist.size() > 0){
+			Integer[] levelArray = new Integer[dist.size()];
+			Arrays.sort(dist.toArray(levelArray));
+			return levelArray[0];
 		}else{
 			return -1;
 		}
 	}
 	
-	private int hitNode(String id, MultiTreeNode mtn, int level){
-		if(level > 0){
-			return level;
+	/**
+	 * 查找标签id对应的所有级别，并返回从小到大排序后的结果
+	 * @param branches 待查找的多叉树分支
+	 * @param nodeId 输入标签id
+	 * @return 排序后的标签所属级别集合
+	 */
+	public List<Integer> findTreeNodeLevelList(List<MultiTreeNode> branches, String nodeId){
+		List<Integer> dist = new ArrayList<Integer>();
+		for(int i = 0; i < branches.size(); i++){
+			hitNodeLevelList(nodeId,branches.get(i),0,dist);
 		}
+		if(dist.size() > 0){
+			Integer[] levelArray = new Integer[dist.size()];
+			Arrays.sort(dist.toArray(levelArray));
+			return new ArrayList<Integer>(Arrays.asList(levelArray));
+		}else{
+			return dist;
+		}
+	}
+	
+	private static void hitNodeLevelList(String id, MultiTreeNode mtn, int level, List<Integer> levels){
 		TreeNode data = mtn.getData();
 		String nodeId = data.getNodeId();
 		if(id.equals(nodeId)){
-			return level+1;
+			levels.add(level + 1);
 		}else if(mtn.getChildList() != null && mtn.getChildList().size() > 0){
 			for(int i = 0; i < mtn.getChildList().size(); i++){
-				hitNode(id,mtn.getChildList().get(i),level+1);
+				hitNodeLevelList(id,mtn.getChildList().get(i),level+1,levels);
 			}
 		}
-		return -1;
 	}
 	
 	private void traverseMultiTree(MultiTreeNode mtn, int level){
@@ -134,7 +183,7 @@ public class CategoryTree {
 	/**
 	 * 深度遍历并打印多叉树节点
 	 */
-	public void printMultiTree(){
+	public void printMultiTree(List<MultiTreeNode> branches){
 		for(MultiTreeNode branch : branches) {
 			traverseMultiTree(branch,0);
 		}

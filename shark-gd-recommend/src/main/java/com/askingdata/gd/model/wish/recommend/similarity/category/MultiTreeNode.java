@@ -1,15 +1,20 @@
 package com.askingdata.gd.model.wish.recommend.similarity.category;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 
-public class MultiTreeNode{
+public class MultiTreeNode implements Serializable{
 	
-	 /** 树节点*/  
+	private static final long serialVersionUID = 4783995642509669346L;
+	/** 树节点*/  
     private TreeNode data;  
     /** 子树集合*/  
     private List<MultiTreeNode> childList;  
-      
+    
     /** 
      * 构造函数 
      *  
@@ -47,7 +52,9 @@ public class MultiTreeNode{
   
     public void setChildList(List<MultiTreeNode> childList) {  
         this.childList = childList;  
-    }  
+    }
+
+
 	
 
 }
