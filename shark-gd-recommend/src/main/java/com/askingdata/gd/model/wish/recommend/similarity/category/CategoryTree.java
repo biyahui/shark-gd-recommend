@@ -1,5 +1,6 @@
 package com.askingdata.gd.model.wish.recommend.similarity.category;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,12 +14,10 @@ import java.util.Map;
  * @author qian qian
  * @since 2017年5月8日
  */
-public class CategoryTree {
+public class CategoryTree implements Serializable{
 	
-	private static LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
-	public int nodeCount = 0;
-	public int preNodeCount = 0;
-	
+	private static final long serialVersionUID = -5705513054381379361L;
+
 	/**
 	 * 生成类目多叉树
 	 * @param nodes 多叉树的所有节点
@@ -28,6 +27,7 @@ public class CategoryTree {
 		/**
 		 * 初始化多叉树的根节点，一个根节点代表一个商品类目
 		 */
+		LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
 		System.out.println("node list size : " + nodes.size());
 		Map<TreeNode,Boolean> treeNodesMap = new HashMap<TreeNode,Boolean>();
 		for(TreeNode node : nodes){
@@ -37,7 +37,6 @@ public class CategoryTree {
 			if(tnode.getParentId().equals("0")) {
 				MultiTreeNode branch = new MultiTreeNode(tnode);
 				branches.add(branch);
-				nodeCount++;
 				treeNodesMap.put(tnode, true);
 			}
 		});
@@ -63,7 +62,6 @@ public class CategoryTree {
 			MultiTreeNode newMultiTree = new MultiTreeNode(node);
 			childList.add(newMultiTree);
 			branch.setChildList(childList);
-			nodeCount++;
 			return true;
 		}else if(branch.getChildList() != null && branch.getChildList().size() > 0){
 			int count = 0;

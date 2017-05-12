@@ -17,17 +17,15 @@ public class CategoryUtil {
 	private JavaSparkContext jsc;
 	private String databaseName;
 	private String collectionName;
-	private CategoryTree ct = new CategoryTree();
-	private List<MultiTreeNode> treeBranches;
+	private static CategoryTree ct = new CategoryTree();
 	
 	public CategoryUtil(JavaSparkContext jsc, String databaseName, String collectionName){
 		this.jsc = jsc;
 		this.databaseName = databaseName;
 		this.collectionName = collectionName;
-		this.treeBranches = createCategoryMultiTree();
 	}
 	
-	public List<MultiTreeNode> createCategoryMultiTree(){
+	public static List<MultiTreeNode> createCategoryMultiTree(JavaSparkContext jsc, String databaseName, String collectionName){
 		JavaRDD<Document> baseCategory = Connections.getMongoDocument(jsc,
 				databaseName, collectionName, false);
 		List<TreeNode> nodes = 
@@ -58,7 +56,4 @@ public class CategoryUtil {
 		return treeBranches;
 	}
 	
-	public int findMinCategoryLevel(String nodeId){
-		return ct.findTreeNodeMinLevel(treeBranches, nodeId);
-	}
 }
