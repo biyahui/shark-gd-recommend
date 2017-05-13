@@ -37,7 +37,6 @@ public class UserTagsVector extends CommonExecutor implements RecommendConstant{
 		String _q = String.format(q, INT_FOCUS, FOCUS_TYPE_TAG);
 		logger.warn(_q);
 		Dataset<Row> d = spark.sql(_q);
-		//Dataset<Row> d1 = d.groupBy("user_id").agg(functions.collect_list("tag")).toDF("user_id","tag");
 		//创建临时表存放用户直接关注的商品标签
 		d.createOrReplaceTempView(INT_USER_TAGS_FOCUS);
 		return true;

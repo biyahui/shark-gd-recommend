@@ -25,11 +25,12 @@ public class UserGoodsVector extends CommonExecutor implements RecommendConstant
 		
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
-		String q = "select x.user_id, value goods_id, explode(y.tags) as tag from %s x\n"+
-				"join (select goods_id, tags from %s where pt='%s') y on(x.value=y.goods_id)  where type='%s'";
+//		String q = "select x.user_id, value goods_id, explode(y.tags) as tag from %s x\n"+
+//				"left join (select goods_id, tags from %s where pt='%s') y on(x.value=y.goods_id)  where type='%s'";
+		String q = "select x.user_id, value goods_id, y.tag from %s x\n"+
+				"left join (select goods_id, tag from %s lateral view explode(tags) tab as tag where pt='%s') y on(x.value=y.goods_id)  where type='%s'";
 		String _q = String.format(q, INT_FOCUS, WISH_PRODUCT_DYNAMIC, toPt, FOCUS_TYPE_GOODS);
 		Dataset<Row> d = spark.sql(_q);
-		
 		d.createOrReplaceTempView(INT_USER_GOODS_FOCUS);
 		return true;
 	}

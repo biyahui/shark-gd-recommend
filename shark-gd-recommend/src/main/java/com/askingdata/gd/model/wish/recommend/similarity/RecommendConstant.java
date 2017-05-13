@@ -21,6 +21,8 @@ public interface RecommendConstant {
 	String User_Shop_Tags = "user_shop_tags";
 	String TB_FINAL_TABLE = "recommend_sim";
 	String TB_RECOMMEND_ALL = "recommend_all";
+	String TB_RECOMMEND_HOT = "recommend_hot";
+	String TB_RECOMMEND_POTENTIAL = "recommend_potential";
 	String COL_GOODSID_CATEGORY_HOT = "goodsId_category_hot";
 	String TB_USER_TAG_GOODS = "user_tag_goods";
 
@@ -30,12 +32,19 @@ public interface RecommendConstant {
 	String COL_GOODSID_CATEGORY = "goodsId_category";
 
 	// Hive数据表
+	//String WISH_PRODUCT_DYNAMIC = "wish_test";
 	String WISH_PRODUCT_DYNAMIC = "wish_product_dynamic";
 	String WISH_PRODUCT_STATIC = "wish_product_static";
 	String FORECAST = "forecast";
 		
 	// 每个用户推荐商品数
 	int recommendCount = 5;
+	// 推荐不重复的天数
+	int dintinctDays = 2;
+	//开始保留备用推荐的商品数，来去重
+	int initRecomendCount = recommendCount*(dintinctDays+1);
+	//热品池数量
+	int numHot = 5000;
 
 	// 关注类型
 	String FOCUS_TYPE_GOODS = "goods";
@@ -44,6 +53,7 @@ public interface RecommendConstant {
 	String FOCUS_TYPE_CATEGORY = "category";
 	
 	//推荐模型任务优先级
+	int PRI_Hot = 90;
 	int PRI_GoodsIdCatagory = 15;
 	int PRI_CatagoryTree = 80;
 	int PRI_LoadFocus = 70;

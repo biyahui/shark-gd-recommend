@@ -30,7 +30,7 @@ import scala.collection.JavaConversions;
 public class ShopHotGoods extends CommonExecutor implements RecommendConstant{
 	
 	private static final long serialVersionUID = -458700901136277417L;
-	private final int N = 10;
+	private final int N = 3;
 	@Override
 	public boolean execute(MongoClient mc) {
 		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
@@ -48,14 +48,16 @@ public class ShopHotGoods extends CommonExecutor implements RecommendConstant{
 		
 		d1.createOrReplaceTempView("tmpshop");
 		//选择店铺内按amount倒序的前3件商品
-		String q2 = "select shop_id,goods_id,tags,amount from (select shop_id,goods_id,amount,tags, \n"+
-		"row_number() over (partition by shop_id order by amount desc) rank from %s) x where rank<=3";
-		String _q2 = String.format(q2, "tmpshop");
+		String q2 = "select shop_id,goods_id,tags from (select shop_id,goods_id,amount,tags, \n"+
+		"row_number() over (partition by shop_id order by amount desc) rank from %s) x where rank<='%s'";
+//		String q2 = "select shop_id,goods_id,tags,amount from (select shop_id,goods_id,amount,tags, \n"+
+//		"row_number() over (partition by shop_id order by amount desc) rank from %s) x where rank<=3";
+		String _q2 = String.format(q2, "tmpshop",N);
 		Dataset<Row> d2 = spark.sql(_q2);
 		
 		d2.createOrReplaceTempView(Shop_Hot_Tags);
 		//删除临时表
-		//spark.sql("drop table tmp");
+		spark.sql("drop table tmpshop");
 		return true;
 	}
 
