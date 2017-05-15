@@ -4,9 +4,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * 类目多叉树的基础类
@@ -18,6 +20,7 @@ public class CategoryTree implements Serializable{
 	
 	private static final long serialVersionUID = -5705513054381379361L;
 
+	public int nodeCount = 0;
 	/**
 	 * 生成类目多叉树
 	 * @param nodes 多叉树的所有节点
@@ -27,42 +30,65 @@ public class CategoryTree implements Serializable{
 		/**
 		 * 初始化多叉树的根节点，一个根节点代表一个商品类目
 		 */
+		
 		LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
 		System.out.println("node list size : " + nodes.size());
 		Map<TreeNode,Boolean> treeNodesMap = new HashMap<TreeNode,Boolean>();
 		for(TreeNode node : nodes){
 			treeNodesMap.put(node, false);
 		}
+		
 		treeNodesMap.forEach((tnode,hasAdded) -> {
 			if(tnode.getParentId().equals("0")) {
 				MultiTreeNode branch = new MultiTreeNode(tnode);
 				branches.add(branch);
+				nodeCount++;
 				treeNodesMap.put(tnode, true);
 			}
 		});
-		System.out.println("branch list size : " + branches.size());
+		
+//		System.out.println("branch list size : " + branches.size());
 		/**
 		 * 遍历集合中的树节点，构造多叉树
 		 */
-		treeNodesMap.forEach((node,hasAdded) -> {
-			if(!hasAdded){
-				for(int i = 0; i < branches.size(); i++) {
-					MultiTreeNode temp = branches.get(i);
-					treeNodesMap.put(node, addMultiTreeNode(temp,node));
-				}
+		while(hasUnInserted(treeNodesMap)){
+			for(MultiTreeNode temp : branches){
+				treeNodesMap.forEach((node,hasAdded) -> {
+					if(!hasAdded){
+						
+						treeNodesMap.put(node, addMultiTreeNode(temp,node));
+					}
+				});
+				
 			}
-		});
+		}
+		
+		
 		return branches;
+	}
+	
+	private boolean hasUnInserted(Map<TreeNode, Boolean> treeNodesMap){
+		boolean hasUnInserted = false;
+		Iterator<Boolean> flags = treeNodesMap.values().iterator();
+		while(flags.hasNext()){
+			if(!flags.next()){
+				hasUnInserted = true;
+				break;
+			}
+		}
+		return hasUnInserted;
 	}
 	
 	private boolean addMultiTreeNode(MultiTreeNode branch, TreeNode node){
 		TreeNode data = branch.getData();
+		boolean added = false;
 		if(data.getNodeId().equals(node.getParentId())){
 			List<MultiTreeNode> childList = branch.getChildList();
 			MultiTreeNode newMultiTree = new MultiTreeNode(node);
 			childList.add(newMultiTree);
+			nodeCount++;
 			branch.setChildList(childList);
-			return true;
+			added = true;
 		}else if(branch.getChildList() != null && branch.getChildList().size() > 0){
 			int count = 0;
 			for(int i = 0; i < branch.getChildList().size(); i++){
@@ -71,13 +97,14 @@ public class CategoryTree implements Serializable{
 				}
 			}
 			if(count > 0){
-				return true;
+				added = true;
 			}else{
-				return false;
+				added = false;
 			}
 		}else{
-			return false;
+			added = false;
 		}
+		return added;
 	}
 	
 	/**
