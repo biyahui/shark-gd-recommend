@@ -57,7 +57,7 @@ public class LoadFocus extends CommonExecutor implements IRecommend{
 		
 		Dataset<Row> focusDF = spark.createDataFrame(rows, schema);
 		focusDF.persist(StorageLevel.MEMORY_ONLY());
-
+		
 		
 		focusDF.createOrReplaceTempView(TB_FOCUS);
 //		focusDF.write().mode(SaveMode.Overwrite).saveAsTable(TB_FOCUS); // debug

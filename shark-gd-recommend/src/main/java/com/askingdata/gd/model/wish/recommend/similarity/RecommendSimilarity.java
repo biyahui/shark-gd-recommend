@@ -3,6 +3,7 @@ package com.askingdata.gd.model.wish.recommend.similarity;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -64,7 +65,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
 		//合并（1）用户关注的标签（2）用户关注商品的标签（3）用户关注店铺热卖商品的标签
-		//String _q = "select user_id, tag from user_tags_focus"; 
 		String q = "select user_id, tag from %s union all select user_id, tag from %s \n"
 				+"union all select user_id,tag from %s";
 		String _q = String.format(q, INT_USER_TAGS_FOCUS, INT_USER_GOODS_FOCUS, User_Shop_Tags);
@@ -102,12 +102,14 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		});
 		
 		//合并（1）用户直接关注的商品（2）用户关注类目下的热销商品
-		//String _user_goods_sql = "select user_id, goods_id from user_goods_focus";
 		String user_goods_sql = "select user_id, goods_id from %s \n"
 				+"union all select user_id, goods_id from %s";
 		String _user_goods_sql = String.format(user_goods_sql, INT_USER_GOODS_FOCUS,INT_USER_GOODS_CATEGORY_FOCUS);
 		//按用户id收集关注的商品，形成商品列表,并对商品列表去重
-		JavaPairRDD<String, List<String>> user_goods = spark.sql(_user_goods_sql).groupBy("user_id")
+		//biyahui add
+		Dataset<Row> goods_focus = spark.sql(_user_goods_sql);
+//		JavaPairRDD<String, List<String>> user_goods = spark.sql(_user_goods_sql).groupBy("user_id")
+		JavaPairRDD<String, List<String>> user_goods = goods_focus.groupBy("user_id")
 				.agg(functions.collect_set("goods_id")).toDF("user_id","goods_id")
 				.javaRDD().mapPartitionsToPair(new PairFlatMapFunction<Iterator<Row>, String, List<String>>() {
 					
@@ -130,28 +132,44 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		});
 		//用户的特征（用户关注的标签和商品情况）
 		JavaPairRDD<String, Tuple2<Optional<HashMap<String, Integer>>, Optional<List<String>>>> userInfo = user_tag_frequency.fullOuterJoin(user_goods);
-//		System.out.println("biyahui test userInfo:"+userInfo.count());
-		//构建商品->商品与类目距离的映射
-		Map<String,Integer> goods_dist = loadGoods_Category();
+		
 		
 		//从用户关注表中挑选出新用户
 		Dataset<Row> alluser = Connections
 				.getMongoDataFrame(spark, mongoUri, viewDatabaseName, COL_FOCUS, new MongoPipeline().select("userId"))
 				.distinct();
-//		System.out.println("biyahui test alluser:"+alluser.count());
 		String usersql = "select distinct(user_Id) userId from %s";
 		String _usersql = String.format(usersql, INT_FOCUS);
 		Dataset<Row> focususer = spark.sql(_usersql);
-//		System.out.println("biyahui test focususer:"+focususer.count());
 		Dataset<Row> newUser = alluser.except(focususer);
-//		System.out.println("biyahui test newUser:"+newUser.count());
-		
+		//common
+		List<String> defaultHotGoods = new ArrayList<String>(); //获得默认填充商品
+		HashMap<String,List<String>> hot_goods = getHotGoods(fromPt,toPt,defaultHotGoods);
+		//构建潜力爆品商品->对应标签映射
+		HashMap<String,List<String>> potential_goods = getPotentialGoods();
+		//获得潜力指数最高的商品，填充推荐
+		List<String> defaultPotentialGoods = getDefaultPotentialGoods();
+		//构建商品->商品与类目距离的映射
+		List<Row> goods1 = new ArrayList<Row>();
+		List<Row> goods2 = new ArrayList<Row>();
+		for(String t : hot_goods.keySet()){
+			goods1.add(RowFactory.create(t));
+		}
+		for(String t : potential_goods.keySet()){
+			goods1.add(RowFactory.create(t));
+		}
+		List<StructField> fields = new ArrayList();
+		fields.add(DataTypes.createStructField("goods_id", DataTypes.StringType, true));
+		StructType schema = DataTypes.createStructType(fields);
+		Map<String,Integer> goods_dist = loadGoods_Category(goods_focus.select("goods_id"),
+				spark.createDataFrame(goods1, schema),
+				spark.createDataFrame(goods2,  schema));
 		/**
 		 * 热品推荐
 		 */
 		//构建热销商品池中商品和标签的映射（七天销量取Top 5000）
-		List<String> defaultHotGoods = new ArrayList<String>(); //获得默认填充商品
-		HashMap<String,List<String>> hot_goods = getHotGoods(fromPt,toPt,defaultHotGoods);
+//		List<String> defaultHotGoods = new ArrayList<String>(); //获得默认填充商品
+//		HashMap<String,List<String>> hot_goods = getHotGoods(fromPt,toPt,defaultHotGoods);
 		JavaPairRDD<String,List<String>> hotFocus = commonFocusUser(userInfo,hot_goods,defaultHotGoods,goods_dist);
 		JavaPairRDD<String,List<String>> hotNew = commonNewUser(newUser,defaultHotGoods);
 		JavaPairRDD<String,List<String>> hot = dropDuplicate(hotFocus.union(hotNew),"hot");
@@ -159,10 +177,10 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		/**
 		 * 潜力爆品推荐
 		 */
-		//构建潜力爆品商品->对应标签映射
-		HashMap<String,List<String>> potential_goods = getPotentialGoods();
-		//获得潜力指数最高的商品，填充推荐
-		List<String> defaultPotentialGoods = getDefaultPotentialGoods();
+//		//构建潜力爆品商品->对应标签映射
+//		HashMap<String,List<String>> potential_goods = getPotentialGoods();
+//		//获得潜力指数最高的商品，填充推荐
+//		List<String> defaultPotentialGoods = getDefaultPotentialGoods();
 		JavaPairRDD<String,List<String>> potentialFocus = commonFocusUser(userInfo,potential_goods,defaultPotentialGoods,goods_dist);
 		JavaPairRDD<String,List<String>> potentialNew = commonNewUser(newUser,defaultPotentialGoods);
 		JavaPairRDD<String,List<String>> potential = dropDuplicate(potentialFocus.union(potentialNew),"potential");
@@ -170,10 +188,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		/**
 		 * 保存推荐结果
 		 */
+		String pt = HivePartitionUtil.dateToPt(new Date()); 
 		String ressql = "INSERT OVERWRITE TABLE %s partition(pt='%s')\n" +
 				"select userId,type,values from %s union all\n"+
 				"select userId,type,values from %s";
-		String _ressql = String.format(ressql, TB_FINAL_TABLE, toPt, TB_RECOMMEND_HOT,TB_RECOMMEND_POTENTIAL);
+//		String _ressql = String.format(ressql, TB_FINAL_TABLE, toPt, TB_RECOMMEND_HOT,TB_RECOMMEND_POTENTIAL);
+		String _ressql = String.format(ressql, TB_FINAL_TABLE, pt, TB_RECOMMEND_HOT,TB_RECOMMEND_POTENTIAL);
 		spark.sql(_ressql);
 		
 		return true;
@@ -189,30 +209,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @return
 	 */
 	public List<String> getDefaultPotentialGoods(){
-		String q = "select goodsId from %s sort by totalAmount desc limit %s";
+		String q = "select goodsId from %s order by totalAmount desc limit %s";
 		String _q = String.format(q, COL_POTENTIAL_HOT, initRecomendCount);
 		Dataset<Row> d = spark.sql(_q);
 		List<String> list = new ArrayList<String>();
 		for(Row r : d.collectAsList()){
 			list.add(r.getAs("goodsId"));
-		}
-		return list;
-	}
-	/**
-	 * 获得initRecomendCount个默认热销商品
-	 * 
-	 * @param dhot
-	 * @return
-	 */
-	public List<String> getDefaultHotGoods(String fromPt, String toPt){
-		String hotsql = "select goods_id, sum(amount) sum_amount from %s \n"
-				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
-				+"group by goods_id order by sum_amount desc limit %s";
-		String _hotsql = String.format(hotsql, WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
-		List<String> list = new ArrayList<String>();
-		Dataset<Row> dhot = spark.sql(_hotsql);
-		for(Row r : dhot.collectAsList()){
-			list.add(r.getAs("goods_id"));
 		}
 		return list;
 	}
@@ -226,11 +228,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		String q = "select x.goods_id,tags from %s x join \n"
 				+"(select goods_id,sum(amount) sum_amount from %s \n"
 				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
-				+"group by goods_id sort by sum_amount desc limit %s) y \n"
+				+"group by goods_id order by sum_amount desc limit %s) y \n"
 				+"on(x.goods_id=y.goods_id)";
 		String _q = String.format(q, WISH_PRODUCT_DYNAMIC,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
 		
 		Dataset<Row> dfHot = spark.sql(_q);
+		//Dataset<Row> dfHot = spark.sql(_q).limit(numHot);
 		HashMap<String,List<String>> hot_goods = new HashMap<String,List<String>>();
 		List<Row> hot = dfHot.collectAsList();
 		int count = 0;
@@ -270,11 +273,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * 构建商品id和类目id的对应关系
 	 * @return
 	 */
-	public Map<String,Integer> loadGoods_Category(){
-		List<String> goods =new ArrayList<String>();
+	public Map<String,Integer> loadGoods_Category(Dataset<Row> dfFocus,Dataset<Row> dfHot,Dataset<Row> dfPotential){
+		Dataset<Row> allGoods = dfFocus.union(dfHot).union(dfPotential);
 		List<MultiTreeNode> treeBranches = CategoryUtil.createCategoryMultiTree(jsc,viewDatabaseName,"baseCategory");
 		CategoryTree ct = new CategoryTree();
-		String q = "select goods_id,category from %s";
+		allGoods.createOrReplaceTempView("allGoods");
+		String q = "select x.goods_id,category from %s x join allGoods y on(x.goods_id=y.goods_id)";
 		String _q = String.format(q, WISH_PRODUCT_STATIC);
 		Map<String,Integer> goods_dist = new HashMap<String,Integer>();
 		Dataset<Row> d = spark.sql(_q).filter(r->r.getAs("category") != null);
@@ -301,8 +305,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 				}else{
 					if(max == -1){
 						goods_dist.put(goods_id, 0);
-						//biyahui added
-						goods.add(goods_id);
 					}else{
 						goods_dist.put(goods_id, max);
 					}
@@ -311,26 +313,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		}
 		return goods_dist;
 	}
-	/**
-	 * 构建商品id与类目的距离的映射关系
-	 * 
-	 * @return
-	 */
-	//biyahui noted
-//	public HashMap<String,Integer> loadGoods_Dist(){
-//		HashMap<String,Integer> map = new HashMap<>();
-//		CategoryTree ct = new CategoryTree();
-//		
-//		String q = "select goodsId, categoryId from %s";
-//		String _q = String.format(q, COL_GOODSID_CATEGORY);
-//		Dataset<Row> d = spark.sql(_q);
-//		List<Row> rows = d.collectAsList();
-//		for(Row r : rows){
-//			int dist = ct.findTreeNode(r.getAs("categoryId"));
-//			map.put(r.getAs("goodsId"), dist);
-//		}
-//		return map;
-//	}
 	/**
 	 * 计算有关注的用户和热品池与潜力爆品池的相似度
 	 * @param userInfo
@@ -421,10 +403,10 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @param goods_dist
 	 */
 	public void calcuteSim(HashMap<String,Integer> tag_frequence, 
-			List<String> ugoods, HashMap<String, List<String>> potential_goods,
+			List<String> ugoods, HashMap<String, List<String>> goodsPool,
 			TreeSet<GoodsSimilarity> ts, Map<String,Integer> goods_dist){
 		//遍历所有商品
-		for(String goods : potential_goods.keySet()){
+		for(String goods : goodsPool.keySet()){
 			double sim =0 ;
 			double catdist =0;
 			int dist = 0;
@@ -439,7 +421,7 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 				for (String t : tag_frequence.keySet()) {
 					user_sum += tag_frequence.get(t) * tag_frequence.get(t);
 					good_sum += 1;
-					List<String> tags = potential_goods.get(goods);
+					List<String> tags = goodsPool.get(goods);
 					if (tags != null && tags.contains(t)) {
 						vector_sum += tag_frequence.get(t);
 					}
@@ -458,7 +440,8 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 					if(goods_dist.containsKey(str))
 						sumDist += goods_dist.get(str);
 				}
-				catdist = Math.log((sumDist + dist)/nGoods)/Math.log(2);
+				if((sumDist + dist)/nGoods > 0)
+					catdist = Math.log((sumDist + dist)/nGoods)/Math.log(2);
 			}
 			//加权标签相似度和距离相似度
 			if(catdist == 0)
@@ -490,14 +473,14 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @return
 	 */
 	public JavaPairRDD<String,List<String>> dropDuplicate(JavaPairRDD<String,List<String>> rdd,String type){
-		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
-		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, dintinctDays);
-		String fromPt = HivePartitionUtil.ptToPt2(startPt);
-		String toPt = HivePartitionUtil.ptToPt2(latestPt);
-//		String q = "select userid,explode(value) as value from %s \n"
-//				+"where type='%s' and pt>='%s' and pt<='%s'";
+//		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
+//		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, dintinctDays);
+//		String fromPt = HivePartitionUtil.ptToPt2(startPt);
+//		String toPt = HivePartitionUtil.ptToPt2(latestPt);
+		String toPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
+		String fromPt = HivePartitionUtil.getPtOfLastNDays(toPt, dintinctDays);
 		String q = "select userid,value from %s lateral view explode(values) tab as value\n"
-				+"where type='%s' and pt>='%s' and pt<'%s'";
+				+"where type='%s' and pt>='%s' and pt<='%s'";
 		String _q = String.format(q, TB_FINAL_TABLE,type,fromPt,toPt);
 		//String _q = String.format(q, "recommend",type,fromPt,toPt);
 		Dataset<Row> d = spark.sql(_q).groupBy("userid").agg(functions.collect_list("value")).toDF("userid","value");
