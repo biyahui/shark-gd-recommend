@@ -3,10 +3,12 @@ package com.askingdata.gd.model.wish.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.bson.Document;
 
@@ -56,13 +58,25 @@ public class CategoryUtil {
 			}
 			
 		})
+		.reduceByKey(new Function2<List<TreeNode>,List<TreeNode>,List<TreeNode>>(){
+
+			@Override
+			public List<TreeNode> call(List<TreeNode> v1, List<TreeNode> v2) throws Exception {
+				// TODO Auto-generated method stub
+				List<TreeNode> v = new ArrayList<TreeNode>();
+				v.addAll(v1);
+				v.addAll(v2);
+				return v;
+			}
+			
+		})
 		.collectAsMap();
 		
 		List<MultiTreeNode> treeBranches = new ArrayList<MultiTreeNode>();
-		for(int i = 0; i < platformNodes.size(); i++){
-			treeBranches.addAll(ct.createCategoryTree(platformNodes.get(i)));
+		for(Entry<String,List<TreeNode>> pair : platformNodes.entrySet()){
+			System.out.println("platform : " + pair.getKey() + "\t platform tree nodes size : " + pair.getValue().size());
+			treeBranches.addAll(ct.createCategoryTree(pair.getValue()));
 		}
-		
 //		List<MultiTreeNode> treeBranches = ct.createCategoryTree(nodes);
 		return treeBranches;
 	}

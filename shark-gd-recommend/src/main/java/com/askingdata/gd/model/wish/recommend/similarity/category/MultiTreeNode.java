@@ -15,6 +15,9 @@ public class MultiTreeNode implements Serializable{
     /** 子树集合*/  
     private List<MultiTreeNode> childList;  
     
+    private List<Integer> level;
+    
+    
     /** 
      * 构造函数 
      *  
@@ -24,6 +27,7 @@ public class MultiTreeNode implements Serializable{
     {  
         this.data = data;  
         this.childList = new ArrayList<MultiTreeNode>();  
+        this.level = new ArrayList<Integer>();
     }  
       
     /** 
@@ -36,11 +40,16 @@ public class MultiTreeNode implements Serializable{
     {  
         this.data = data;  
         this.childList = childList;  
+        this.level = new ArrayList<Integer>();
     }  
   
     public TreeNode getData() {  
         return data;  
     }  
+    
+    public List<Integer> getLevels() {
+    	return level;
+    }
   
     public void setData(TreeNode data) {  
         this.data = data;  
@@ -54,7 +63,12 @@ public class MultiTreeNode implements Serializable{
         this.childList = childList;  
     }
 
+    public void setLevel(List<Integer> levels) {
+    	this.level = levels;
+    }
 
-	
+	public void addLevel(int level){
+		this.level.add(level);
+	}
 
 }
