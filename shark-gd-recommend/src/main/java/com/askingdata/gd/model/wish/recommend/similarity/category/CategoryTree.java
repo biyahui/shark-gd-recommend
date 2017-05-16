@@ -32,7 +32,7 @@ public class CategoryTree implements Serializable{
 		 */
 		
 		LinkedList<MultiTreeNode> branches = new LinkedList<MultiTreeNode>();
-		System.out.println("node list size : " + nodes.size());
+//		System.out.println("node list size : " + nodes.size());
 		Map<TreeNode,Boolean> treeNodesMap = new HashMap<TreeNode,Boolean>();
 		for(TreeNode node : nodes){
 			treeNodesMap.put(node, false);
@@ -106,6 +106,8 @@ public class CategoryTree implements Serializable{
 		}
 		return added;
 	}
+	
+	
 	
 	/**
 	 * 查找标签id对应的输入多叉树上的所有节点
