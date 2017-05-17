@@ -46,7 +46,16 @@ public class LoadFocus extends CommonExecutor implements RecommendConstant{
 					d.put("user_id", userId);
 					//d.put("user_name", userName);
 					d.put("type", type);
-					d.put("value", valueDoc.get("id"));
+					if(type.equals("category")){
+						String tmp = valueDoc.get("id").toString();
+						if(tmp.contains(".")){
+							d.put("value", tmp.split("\\.")[1]);
+						}else{
+							d.put("value", tmp);
+						}
+					}else{
+						d.put("value", valueDoc.get("id"));
+					}
 					docs.add(d);
 				}
 				return docs.iterator();
@@ -61,10 +70,8 @@ public class LoadFocus extends CommonExecutor implements RecommendConstant{
 		
 		Dataset<Row> focusDF = spark.createDataFrame(rows, schema);
 		focusDF.persist(StorageLevel.MEMORY_ONLY());
-
 		
 		focusDF.createOrReplaceTempView(INT_FOCUS);
-		
 //		focusDF.write().mode(SaveMode.Overwrite).saveAsTable(TB_FOCUS); // debug
 		return true;
 	}

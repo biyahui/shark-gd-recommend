@@ -59,9 +59,10 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 
 	@Override
 	public boolean execute(MongoClient mc) {
-		//String latestPt = "2017-04-04";
+		//String latestPt = "20170404";
 		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
-		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 6);
+//		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 6);
+		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 1);
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
 		//合并（1）用户关注的标签（2）用户关注商品的标签（3）用户关注店铺热卖商品的标签
@@ -132,16 +133,17 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		});
 		//用户的特征（用户关注的标签和商品情况）
 		JavaPairRDD<String, Tuple2<Optional<HashMap<String, Integer>>, Optional<List<String>>>> userInfo = user_tag_frequency.fullOuterJoin(user_goods);
-		
+		System.out.println("biyahui test userInfo:"+userInfo.count());
 		
 		//从用户关注表中挑选出新用户
-		Dataset<Row> alluser = Connections
-				.getMongoDataFrame(spark, mongoUri, viewDatabaseName, COL_FOCUS, new MongoPipeline().select("userId"))
-				.distinct();
-		String usersql = "select distinct(user_Id) userId from %s";
-		String _usersql = String.format(usersql, INT_FOCUS);
-		Dataset<Row> focususer = spark.sql(_usersql);
-		Dataset<Row> newUser = alluser.except(focususer);
+		Dataset<Row> newUser = createNewUser();
+//		Dataset<Row> alluser = Connections
+//				.getMongoDataFrame(spark, mongoUri, viewDatabaseName, COL_FOCUS, new MongoPipeline().select("userId"))
+//				.distinct();
+//		String usersql = "select distinct(user_Id) userId from %s";
+//		String _usersql = String.format(usersql, INT_FOCUS);
+//		Dataset<Row> focususer = spark.sql(_usersql);
+//		Dataset<Row> newUser = alluser.except(focususer);
 		//common
 		List<String> defaultHotGoods = new ArrayList<String>(); //获得默认填充商品
 		HashMap<String,List<String>> hot_goods = getHotGoods(fromPt,toPt,defaultHotGoods);
@@ -526,6 +528,14 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 			}
 		});
 		return result;
+	}
+	public Dataset<Row> createNewUser(){
+		List<StructField> fields = new ArrayList();
+		fields.add(DataTypes.createStructField("userId", DataTypes.StringType, true));
+		StructType schema = DataTypes.createStructType(fields);
+		List<Row> user = new ArrayList<Row>();
+		user.add(RowFactory.create("newUser"));
+		return spark.createDataFrame(user, schema);
 	}
 	public StructType createSchema(){
 		List<StructField> fields = new ArrayList<StructField>();
