@@ -63,10 +63,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	@Override
 	public boolean execute(MongoClient mc) {
 		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
-		//String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 6);
-		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 1);
+		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 6);
+		//String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 1);
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
+		System.out.println("fromPt:"+fromPt);
+		System.out.println("toPt:"+toPt);
 		//合并（1）用户关注的标签（2）用户关注商品的标签（3）用户关注店铺热卖商品的标签
 		String q = "select user_id, tag from %s union all select user_id, tag from %s \n"
 				+"union all select user_id,tag from %s";
@@ -326,10 +328,15 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 			String goods_id = row.getAs("goods_id");
 			Map<String,WrappedArray> category_map = null;
 			List<String> category = null;
-			category_map = JavaConversions.mapAsJavaMap(row.getAs("category"));
-			for(String platform : category_map.keySet()){
-				if(platform.equals("WISH")){
-					category = JavaConversions.seqAsJavaList(category_map.get(platform));
+			if(row.getAs("category") != null){
+				category_map = JavaConversions.mapAsJavaMap(row.getAs("category"));
+			}
+			//biyahui added
+			if(category_map != null){
+				for(String platform : category_map.keySet()){
+					if(platform.equals("WISH")){
+						category = JavaConversions.seqAsJavaList(category_map.get(platform));
+					}
 				}
 			}
 			int max = Integer.MIN_VALUE;
