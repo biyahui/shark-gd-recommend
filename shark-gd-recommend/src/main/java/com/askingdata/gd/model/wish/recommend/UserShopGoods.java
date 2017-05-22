@@ -1,4 +1,3 @@
-
 package com.askingdata.gd.model.wish.recommend;
 
 import com.askingdata.gd.model.wish.common.CommonExecutor;

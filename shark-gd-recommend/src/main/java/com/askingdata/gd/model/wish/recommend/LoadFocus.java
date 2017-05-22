@@ -42,7 +42,15 @@ public class LoadFocus extends CommonExecutor implements IRecommend{
 					d.put("user_id", userId);
 					d.put("user_name", userName);
 					d.put("type", type);
-					d.put("value", valueDoc.get("id"));
+					if ("category".equals(type)) {
+						String value = valueDoc.getString("id");
+						if (value.contains(".")) {
+							value = value.split("\\.")[1];
+						}
+						d.put("value", value);
+					} else {
+						d.put("value", valueDoc.get("id"));
+					}
 					docs.add(d);
 				}
 				return docs.iterator();
@@ -57,11 +65,10 @@ public class LoadFocus extends CommonExecutor implements IRecommend{
 		
 		Dataset<Row> focusDF = spark.createDataFrame(rows, schema);
 		focusDF.persist(StorageLevel.MEMORY_ONLY());
-		
+
 		
 		focusDF.createOrReplaceTempView(TB_FOCUS);
 //		focusDF.write().mode(SaveMode.Overwrite).saveAsTable(TB_FOCUS); // debug
-
 		return true;
 	}
 
