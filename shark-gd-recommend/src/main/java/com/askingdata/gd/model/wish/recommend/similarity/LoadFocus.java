@@ -70,7 +70,7 @@ public class LoadFocus extends CommonExecutor implements RecommendConstant{
 		
 		Dataset<Row> focusDF = spark.createDataFrame(rows, schema);
 		focusDF.persist(StorageLevel.MEMORY_ONLY());
-		
+		System.out.println(focusDF.count());
 		focusDF.createOrReplaceTempView(INT_FOCUS);
 //		focusDF.write().mode(SaveMode.Overwrite).saveAsTable(TB_FOCUS); // debug
 		return true;

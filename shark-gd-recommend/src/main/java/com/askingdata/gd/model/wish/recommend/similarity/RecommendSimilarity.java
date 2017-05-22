@@ -1,28 +1,21 @@
 package com.askingdata.gd.model.wish.recommend.similarity;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import org.apache.derby.impl.sql.catalog.SYSPERMSRowFactory;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.ForeachFunction;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -32,18 +25,12 @@ import org.apache.spark.sql.catalyst.encoders.RowEncoder;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import org.bson.Document;
 
 import com.askingdata.gd.model.wish.common.CommonExecutor;
 import com.askingdata.gd.model.wish.common.HivePartitionUtil;
 import com.askingdata.gd.model.wish.recommend.similarity.category.CategoryTree;
 import com.askingdata.gd.model.wish.recommend.similarity.category.MultiTreeNode;
 import com.askingdata.gd.model.wish.util.CategoryUtil;
-import com.askingdata.shark.common.Connections;
-import com.askingdata.shark.common.function.MapDocumentToRow;
-import com.askingdata.shark.common.mongo.MongoPipeline;
-import com.askingdata.shark.common.spark.SparkUtil;
-import com.askingdata.shark.common.spark.WriteMode;
 import com.mongodb.MongoClient;
 
 import scala.Tuple2;
@@ -64,7 +51,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	public boolean execute(MongoClient mc) {
 		String latestPt = HivePartitionUtil.getLatestPt(spark, WISH_PRODUCT_DYNAMIC);
 		String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 6);
-		//String startPt = HivePartitionUtil.getPtOfLastNDays(latestPt, 1);
 		String fromPt = HivePartitionUtil.ptToPt2(startPt);
 		String toPt = HivePartitionUtil.ptToPt2(latestPt);
 		System.out.println("fromPt:"+fromPt);
@@ -110,12 +96,12 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 //		String user_goods_sql = "select user_id, goods_id from %s \n"
 //				+"union all select user_id, goods_id from %s";
 //		String _user_goods_sql = String.format(user_goods_sql, INT_USER_GOODS_FOCUS,INT_USER_GOODS_CATEGORY_FOCUS);
-		//按用户id收集关注的商品，形成商品列表,并对商品列表去重
-		//biyahui add
 		//Dataset<Row> goods_focus = spark.sql(_user_goods_sql);
 		List<MultiTreeNode> treeBranches = CategoryUtil.createCategoryMultiTree(jsc,viewDatabaseName,"baseCategory");
+		Broadcast<List<MultiTreeNode>> broadTree = jsc.broadcast(treeBranches);
 		CategoryTree ct = new CategoryTree();
-		Dataset<Row> goods_focus = addDist(treeBranches,ct);
+		Dataset<Row> goods_focus = addDist(broadTree,ct);
+		//按用户id收集关注的商品，形成商品列表,并对商品列表去重
 		JavaPairRDD<String, List<String>> user_goods = goods_focus.groupBy("user_id")
 				.agg(functions.collect_set("goods_id")).toDF("user_id","goods_id")
 				.javaRDD().mapPartitionsToPair(new PairFlatMapFunction<Iterator<Row>, String, List<String>>() {
@@ -140,9 +126,8 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		//用户的特征（用户关注的标签和商品情况）
 		JavaPairRDD<String, Tuple2<Optional<HashMap<String, Integer>>, Optional<List<String>>>> userInfo = user_tag_frequency.fullOuterJoin(user_goods);
 		//System.out.println("biyahui test userInfo:"+userInfo.count());
-		
-		//从用户关注表中挑选出新用户
-		Dataset<Row> newUser = createNewUser();
+		//新用户处理
+		JavaRDD<String> newUser = jsc.parallelize(Arrays.asList("newUser"));
 		List<String> defaultHotGoods = new ArrayList<String>(); //获得默认填充商品
 		HashMap<String,List<String>> hot_goods = getHotGoods(fromPt,toPt,defaultHotGoods);
 		//构建潜力爆品商品->对应标签映射
@@ -171,8 +156,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		/**
 		 * 热品推荐
 		 */
-//		JavaPairRDD<String,List<String>> hotFocus = commonFocusUser(userInfo,hot_goods,defaultHotGoods,goods_dist);
-//		JavaPairRDD<String,List<String>> hotNew = commonNewUser(newUser,defaultHotGoods);
 		JavaPairRDD<String,List<String>> hotFocus = commonFocusUser(userInfo,broadHot,broadDefaultHot,broadDist);
 		JavaPairRDD<String,List<String>> hotNew = commonNewUser(newUser,broadDefaultHot);
 		JavaPairRDD<String,List<String>> hot = dropDuplicate(hotFocus.union(hotNew),"hot");
@@ -180,8 +163,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		/**
 		 * 潜力爆品推荐
 		 */
-//		JavaPairRDD<String,List<String>> potentialFocus = commonFocusUser(userInfo,potential_goods,defaultPotentialGoods,goods_dist);
-//		JavaPairRDD<String,List<String>> potentialNew = commonNewUser(newUser,defaultPotentialGoods);
 		JavaPairRDD<String,List<String>> potentialFocus = commonFocusUser(userInfo,broadPotential,broadDefaultPotential,broadDist);
 		JavaPairRDD<String,List<String>> potentialNew = commonNewUser(newUser,broadDefaultPotential);
 		JavaPairRDD<String,List<String>> potential = dropDuplicate(potentialFocus.union(potentialNew),"potential");
@@ -225,12 +206,16 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @return
 	 */
 	public HashMap<String,List<String>> getHotGoods(String fromPt, String toPt,List<String> defaultHotGoods){
-		String q = "select x.goods_id,tags from %s x join \n"
-				+"(select goods_id,sum(amount) sum_amount from %s \n"
+		String q = "select goods_id,tags from %s \n"
 				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
-				+"group by goods_id order by sum_amount desc limit %s) y \n"
-				+"on(x.goods_id=y.goods_id)";
-		String _q = String.format(q, WISH_PRODUCT_DYNAMIC,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
+				+"group by goods_id,tags order by sum(amount) desc limit %s";
+		String _q = String.format(q,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
+//		String q = "select x.goods_id,tags from %s x join \n"
+//				+"(select goods_id,sum(amount) sum_amount from %s \n"
+//				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
+//				+"group by goods_id sort by sum_amount desc limit %s) y \n"
+//				+"on(x.goods_id=y.goods_id)";
+//		String _q = String.format(q, WISH_PRODUCT_DYNAMIC,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
 		
 		Dataset<Row> dfHot = spark.sql(_q);
 		//Dataset<Row> dfHot = spark.sql(_q).limit(numHot);
@@ -312,59 +297,61 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 		}
 		return goods_dist;
 	}
-	public Dataset<Row> addDist(List<MultiTreeNode> treeBranches,CategoryTree ct){
+	public Dataset<Row> addDist(Broadcast<List<MultiTreeNode>> treeBranches,CategoryTree ct){
 		String q = "select user_id,x.goods_id,category from "
 				+"(select user_id, goods_id from %s union all select user_id, goods_id from %s) x "
 				+"join %s y on(x.goods_id=y.goods_id)";
 		String _q = String.format(q, INT_USER_GOODS_FOCUS,INT_USER_GOODS_CATEGORY_FOCUS,WISH_PRODUCT_STATIC);
-//		List<MultiTreeNode> treeBranches = CategoryUtil.createCategoryMultiTree(jsc,viewDatabaseName,"baseCategory");
-//		CategoryTree ct = new CategoryTree();
 		List<StructField> fields = new ArrayList();
 		fields.add(DataTypes.createStructField("user_id", DataTypes.StringType, true));
 		fields.add(DataTypes.createStructField("goods_id", DataTypes.StringType, true));
 		StructType schema = DataTypes.createStructType(fields);
-		Dataset<Row> goods_focus = spark.sql(_q).map(row->{
-			String user_id = row.getAs("user_id");
-			String goods_id = row.getAs("goods_id");
-			Map<String,WrappedArray> category_map = null;
-			List<String> category = null;
-			if(row.getAs("category") != null){
-				category_map = JavaConversions.mapAsJavaMap(row.getAs("category"));
-			}
-			//biyahui added
-			if(category_map != null){
-				for(String platform : category_map.keySet()){
-					if(platform.equals("WISH")){
-						category = JavaConversions.seqAsJavaList(category_map.get(platform));
+		Dataset<Row> goods_focus1 = spark.sql(_q).mapPartitions(t -> {
+			List<Row> result = new ArrayList<Row>();
+			while (t.hasNext()) {
+				Row row = t.next();
+				String user_id = row.getAs("user_id");
+				String goods_id = row.getAs("goods_id");
+				Map<String, WrappedArray> category_map = null;
+				List<String> category = null;
+				if (row.getAs("category") != null) {
+					category_map = JavaConversions.mapAsJavaMap(row.getAs("category"));
+				}
+				// biyahui added
+				if (category_map != null) {
+					for (String platform : category_map.keySet()) {
+						if (platform.equals("WISH")) {
+							category = JavaConversions.seqAsJavaList(category_map.get(platform));
+						}
 					}
 				}
-			}
-			int max = Integer.MIN_VALUE;
-			if(category != null){
-				for(String cate : category){
-					int value = ct.findTreeNodeMinLevel(treeBranches,cate);
-					if(value > max){
-						max = value;
+				int max = Integer.MIN_VALUE;
+				if (category != null) {
+					for (String cate : category) {
+						int value = ct.findTreeNodeMinLevel(treeBranches.value(), cate);
+						if (value > max) {
+							max = value;
+						}
 					}
-				}
-				if(max == Integer.MIN_VALUE){
-					goods_id = goods_id+":"+max;
-					//goods_dist.put(goods_id, 0);
-				}else{
-					if(max == -1){
-						goods_id = goods_id+":"+max;
-						//goods_dist.put(goods_id, 0);
-					}else{
-						goods_id = goods_id+":"+max;
-						//goods_dist.put(goods_id, max);
+					if (max == Integer.MIN_VALUE) {
+						goods_id = goods_id + ":" + max;
+						// goods_dist.put(goods_id, 0);
+					} else {
+						if (max == -1) {
+							goods_id = goods_id + ":" + max;
+							// goods_dist.put(goods_id, 0);
+						} else {
+							goods_id = goods_id + ":" + max;
+							// goods_dist.put(goods_id, max);
+						}
 					}
+				} else {
+					goods_id = goods_id + ":" + 0;
 				}
-			}else{
-				goods_id = goods_id+":"+0;
 			}
-			return RowFactory.create(user_id,goods_id);
+			return result.iterator();
 		}, RowEncoder.apply(schema));
-		return goods_focus;
+		return goods_focus1;
 	}
 	/**
 	 * 计算有关注的用户和热品池与潜力爆品池的相似度
@@ -373,8 +360,6 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @param defaultGoods
 	 * @return
 	 */
-//	public JavaPairRDD<String,List<String>> commonFocusUser(JavaPairRDD<String, Tuple2<Optional<HashMap<String, Integer>>, Optional<List<String>>>> userInfo,
-//			HashMap<String,List<String>> goods_tags,List<String> defaultGoods,Map<String,Integer> goods_dist){
 	public JavaPairRDD<String,List<String>> commonFocusUser(JavaPairRDD<String, Tuple2<Optional<HashMap<String, Integer>>, Optional<List<String>>>> userInfo,
 			Broadcast<HashMap<String,List<String>>> goods_tags,Broadcast<List<String>> defaultGoods,Broadcast<Map<String,Integer>> goods_dist){
 		//相似度计算
@@ -429,16 +414,15 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @param defaultGoods
 	 * @return
 	 */
-	public JavaPairRDD<String,List<String>> commonNewUser(Dataset<Row> newUser,Broadcast<List<String>> defaultGoods){
-		JavaPairRDD<String,List<String>> recommendNew = newUser.javaRDD()
-				.mapPartitionsToPair(new PairFlatMapFunction<Iterator<Row>, String, List<String>>() {
+	public JavaPairRDD<String,List<String>> commonNewUser(JavaRDD<String> newUser,Broadcast<List<String>> defaultGoods){
+		JavaPairRDD<String,List<String>> recommendNew = newUser
+				.mapPartitionsToPair(new PairFlatMapFunction<Iterator<String>, String, List<String>>() {
 
 			@Override
-			public Iterator<Tuple2<String, List<String>>> call(Iterator<Row> t) throws Exception {
+			public Iterator<Tuple2<String, List<String>>> call(Iterator<String> t) throws Exception {
 				List<Tuple2<String, List<String>>> pairList = new ArrayList<Tuple2<String, List<String>>>();
 				while(t.hasNext()){
-					Row r = t.next();
-					String userId = r.getAs("userId");
+					String userId = t.next();
 					pairList.add(new Tuple2<String, List<String>>(userId, defaultGoods.value()));
 				}
 				return pairList.iterator();

@@ -44,7 +44,7 @@ public interface RecommendConstant {
 	//开始保留备用推荐的商品数，来去重
 	int initRecomendCount = recommendCount*(dintinctDays+1);
 	//热品池数量
-	int numHot = 3000;
+	int numHot = 1000;
 
 	// 关注类型
 	String FOCUS_TYPE_GOODS = "goods";
