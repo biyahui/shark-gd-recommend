@@ -19,7 +19,7 @@ public interface RecommendConstant {
 	String INT_USER_GOODS_CATEGORY_FOCUS = "user_goods_category_focus";
 	String Shop_Hot_Tags = "shop_hot_tag";
 	String User_Shop_Tags = "user_shop_tags";
-	String TB_FINAL_TABLE = "recommend_sim";
+	String TB_FINAL_TABLE = "recommend";
 	String TB_RECOMMEND_ALL = "recommend_all";
 	String TB_RECOMMEND_HOT = "recommend_hot";
 	String TB_RECOMMEND_POTENTIAL = "recommend_potential";

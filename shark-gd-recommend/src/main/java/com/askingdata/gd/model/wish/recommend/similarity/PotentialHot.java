@@ -32,7 +32,7 @@ public class PotentialHot extends CommonExecutor implements RecommendConstant {
 	public boolean execute(MongoClient mc) {
 		// TODO Auto-generated method stub
 		Connections.getMongoDataFrame(spark, mongoUri, viewDatabaseName, COL_POTENTIAL_HOT, new MongoPipeline().select
-				("goodsId","tags","totalAmount")).createOrReplaceTempView(COL_POTENTIAL_HOT);
+				("goodsId","tags","totalSale")).createOrReplaceTempView(COL_POTENTIAL_HOT);
 		return true;
 	}
 

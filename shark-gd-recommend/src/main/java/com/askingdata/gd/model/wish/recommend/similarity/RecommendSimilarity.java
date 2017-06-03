@@ -190,7 +190,7 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 * @return
 	 */
 	public List<String> getDefaultPotentialGoods(){
-		String q = "select goodsId from %s order by totalAmount desc limit %s";
+		String q = "select goodsId from %s order by totalSale desc limit %s";
 		String _q = String.format(q, COL_POTENTIAL_HOT, initRecomendCount);
 		Dataset<Row> d = spark.sql(_q);
 		List<String> list = new ArrayList<String>();
@@ -207,15 +207,9 @@ public class RecommendSimilarity extends CommonExecutor implements RecommendCons
 	 */
 	public HashMap<String,List<String>> getHotGoods(String fromPt, String toPt,List<String> defaultHotGoods){
 		String q = "select goods_id,tags from %s \n"
-				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
-				+"group by goods_id,tags order by sum(amount) desc limit %s";
+				+"where pt>='%s' and pt<='%s' and sale!=2147483647 \n"
+				+"group by goods_id,tags order by sum(sale) desc limit %s";
 		String _q = String.format(q,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
-//		String q = "select x.goods_id,tags from %s x join \n"
-//				+"(select goods_id,sum(amount) sum_amount from %s \n"
-//				+"where pt>='%s' and pt<='%s' and amount!='NaN' \n"
-//				+"group by goods_id sort by sum_amount desc limit %s) y \n"
-//				+"on(x.goods_id=y.goods_id)";
-//		String _q = String.format(q, WISH_PRODUCT_DYNAMIC,WISH_PRODUCT_DYNAMIC, fromPt, toPt,numHot);
 		
 		Dataset<Row> dfHot = spark.sql(_q);
 		//Dataset<Row> dfHot = spark.sql(_q).limit(numHot);
